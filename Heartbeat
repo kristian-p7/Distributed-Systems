@@ -1,0 +1,19 @@
+# Listener for Heartbeat TCP messages (Fault Tolerance)
+class HeartbeatListener(Thread):
+    def __init__(self, heartbeat_port, UUID):
+        Thread.__init__(self)
+        self.heartbeat_port = heartbeat_port
+        self.host = socket.gethostname()
+        self.ip_addr = IP_ADDR
+        self.UUID = UUID
+        if debug: print("Heartbeat started ", self.ip_addr ," listening ... ", self.heartbeat_port)
+        self.running = True
+
+def terminate(self):
+        self.running = False
+
+    def run(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(('', self.heartbeat_port))
+        s.listen(5)
