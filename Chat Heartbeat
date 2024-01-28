@@ -1,0 +1,30 @@
+import socket
+import time
+
+def start_server(port):
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind(('localhost', port))
+    server_socket.listen(1)
+
+    print(f"Server listening on port {port}")
+
+    client_socket, client_address = server_socket.accept()
+    print(f"Connection established with {client_address}")
+
+    while True:
+        try:
+            data = client_socket.recv(1024)
+            if not data:
+                print("Connection closed by client.")
+                break
+            print(f"Received heartbeat from client: {data.decode()}")
+            time.sleep(5)  # Simulating some processing time
+        except Exception as e:
+            print(f"Error: {e}")
+            break
+
+    client_socket.close()
+    server_socket.close()
+
+if __name__ == "__main__":
+    start_server(8080)
