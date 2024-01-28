@@ -1,4 +1,21 @@
-# Listener for Heartbeat TCP messages (Fault Tolerance)
+# Interpreter Class mit User-ID ( Z. 160-172)
+class MessageInterpreter():
+    def __init__(self, data):
+        self.msg = decodeMessage(data)
+        self.command = self.msg['cmd']
+        self.content = self.msg['msg'] # Often it is an ip address, except the command is "GAME"
+        self.id = self.msg['uuid']
+        self.my_ip_addr = IP_ADDR
+        self.my_id = UUID
+        global leaderIpAndUUID
+        global peers
+        global leader
+        global BSender
+        global game
+
+
+
+# Listener for Heartbeat TCP messages (Fault Tolerance) (Z.320)
 class HeartbeatListener(Thread):
     def __init__(self, heartbeat_port, UUID):
         Thread.__init__(self)
@@ -17,3 +34,5 @@ def terminate(self):
         #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(('', self.heartbeat_port))
         s.listen(5)
+
+
