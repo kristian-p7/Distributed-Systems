@@ -1,0 +1,109 @@
+# Sendet heartbeat messages und wartet auf Antwort -> zählt fehlende Antworten und informiert über fehlende Peers
+class HeartbeatSender(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+        self.running = True
+        self.uport = 59071  #??????
+        self.UUID = UUID
+        self.hostname = socket.gethostname()
+        self.ip_address = ipaddress
+        self.counterLeft = 0 #????
+        self.counterRight = 0 #????
+
+        self.msg = {
+            "cmd": "HEARTBEAT",
+            "uuid": str(self.UUID),
+            "msg": self.ip_address
+        }
+
+    def terminate(self):
+        self.running = False
+
+    # Sendet den Heartbeat in Sekundenintervallen
+    def run(self):
+        while self.running:
+            self.sendMessage(find_neighbors(self.ip_address), self.uport, self.msg, "right") #überprüft, ob Veränderungen bei den Neighbours auftreten
+            time.sleep(0.5)
+        pass
+       
+# Sendet Message und identifiziert Fehler
+    def sendMessage(self, neighbor, uport, message, direction):
+
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            #print(neighbor[0], uport)
+            s.connect_ex((neighbor[0], uport))
+            s.sendall(encodeMessage(message))
+            data = s.recv(1024)
+            #time.sleep(1)
+            if not data:
+                if direction == "right": 
+                    self.counterRight += 1  # + für rechts
+                    if debug: print("Right neighbor counter 'no data' +1")
+                elif direction == "left":
+                    self.counterLeft += 1     # - für links, ursrpünglich auch +
+                    if debug: print("Left neighbor counter 'no data' +1")
+                return
+            
+        #print('TCP Received from', direction,'neighbor: ', repr(data))
+        except socket.error or Exception:
+            if direction == "right": 
+                self.counterRight += 1   # + für rechts
+                self.failureRight = True
+                if debug: print("Right neighbor 'socket error' ")
+            elif direction == "left":
+                self.counterLeft -= 1    # - für links
+                self.failureLeft = True
+                if debug: print("Left neighbor 'socket error' ")
+        finally:
+            s.close
+
+        # Wie auf "missing neighbours" reagiert wird
+        if self.counterLeft < 3 :   # ursprünglich > 3
+            if debug: print("Left neighbor lost: ", neighbor)
+            self.sendLostPeerMessage(neighbor)
+            self.counterLeft = 0
+            pass
+        if self.counterRight < 3 :  # ursprünglich > 3
+            if debug: print("Right neighbor lost: ", neighbor)
+            self.sendLostPeerMessage(neighbor)
+            self.counterRight = 0
+        pass
+
+    # Handling lost peers
+    def sendLostPeerMessage(self, neighbor):
+        global leaderIpAndUUID
+        global leader
+        global BSender
+
+        # FALL 1: Leader got lost. --> Detecting peer takes temporary leader role, broadcasts the lost leader and starts new leader voting
+        if neighbor[0] == leaderIpAndUUID[0]:
+            
+            if debug: print("The leader is lost. This peer will be the temprary leader.")
+            
+            leader = True
+
+            msgLostPeer = {
+                "cmd": "LOST_PEER",
+                "uuid": neighbor[1],
+                "msg": neighbor[0]
+            }
+
+            BSender.broadcast(BSender.bcip, BSender.bcport, msgLostPeer)
+
+            time.sleep(1)
+
+            vote = Voting()
+            vote.startVote()
+
+        # FALL2: Peer lost  ->   The detecting peer informs the leader about the lost peer
+        else:
+            
+            if debug: print("Inform the leader that one neighbor is lost")
+            msgLostNeighbor = {
+                        "cmd": "LOST_NEIGHBOR",
+                        "uuid": neighbor[1],
+                        "msg": neighbor[0]
+                    }
+
+            TCPUnicastSender(self.UUID, leaderIpAndUUID[0], msgLostNeighbor)
